@@ -636,6 +636,7 @@ button {
 }
 
 .day-cell {
+  position: relative;
   background: var(--bg-cell);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -674,6 +675,52 @@ button {
 .day-cell--today.day-cell--weekend {
   background: linear-gradient(180deg, rgba(56, 189, 248, 0.3), rgba(168, 85, 247, 0.12)),
     var(--today);
+}
+
+.day-cell--streak {
+  background: linear-gradient(
+      180deg,
+      rgba(245, 158, 11, 0.15),
+      rgba(245, 158, 11, 0.06)
+    ),
+    var(--bg-cell);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.day-cell--streak.day-cell--weekend {
+  background: linear-gradient(
+      180deg,
+      rgba(245, 158, 11, 0.18),
+      rgba(245, 158, 11, 0.04)
+    ),
+    linear-gradient(180deg, rgba(56, 189, 248, 0.06), rgba(168, 85, 247, 0.04)),
+    var(--bg-cell);
+}
+
+.day-cell--streak.day-cell--today {
+  background: linear-gradient(
+      180deg,
+      rgba(245, 158, 11, 0.18),
+      rgba(245, 158, 11, 0.04)
+    ),
+    linear-gradient(180deg, rgba(56, 189, 248, 0.22), rgba(56, 189, 248, 0.06)),
+    var(--today);
+}
+
+.day-cell__streak-badge {
+  position: absolute;
+  top: 4px;
+  inset-inline-end: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.14);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  padding: 1px 6px;
+  border-radius: 999px;
+  pointer-events: none;
+  line-height: 1.2;
 }
 
 .calendar__weekday--weekend {
@@ -716,6 +763,22 @@ button {
 .shift-chip__next {
   margin-inline-start: 4px;
   opacity: 0.85;
+}
+
+.shift-chip__prev {
+  margin-inline-end: 4px;
+  opacity: 0.85;
+}
+
+.shift-chip--seg-start {
+  border-start-end-radius: 2px;
+  border-end-end-radius: 2px;
+}
+
+.shift-chip--seg-end {
+  border-start-start-radius: 2px;
+  border-end-start-radius: 2px;
+  opacity: 0.92;
 }
 
 /* Modal */

@@ -4,12 +4,14 @@ import {
   HEBREW_WEEKDAYS,
   addMonths,
   buildMonthGrid,
+  isOvernight,
   isSameDay,
   isWeekend,
   monthLabel,
+  nextISODate,
   toISODate,
 } from '../dateUtils';
-import { DayCell } from './DayCell';
+import { DayCell, type DayChip } from './DayCell';
 
 type Props = {
   shifts: AnnotatedShift[];
@@ -34,15 +36,28 @@ export function Calendar({
 }: Props) {
   const cells = useMemo(() => buildMonthGrid(cursor), [cursor]);
 
-  const shiftsByDate = useMemo(() => {
-    const map = new Map<string, AnnotatedShift[]>();
+  const chipsByDate = useMemo(() => {
+    const map = new Map<string, DayChip[]>();
+    const push = (date: string, chip: DayChip) => {
+      const arr = map.get(date) ?? [];
+      arr.push(chip);
+      map.set(date, arr);
+    };
     for (const s of shifts) {
-      const arr = map.get(s.date) ?? [];
-      arr.push(s);
-      map.set(s.date, arr);
+      if (isOvernight(s)) {
+        push(s.date, { shift: s, segment: 'start' });
+        push(nextISODate(s.date), { shift: s, segment: 'end' });
+      } else {
+        push(s.date, { shift: s, segment: 'full' });
+      }
     }
     for (const arr of map.values()) {
-      arr.sort((a, b) => a.startTime.localeCompare(b.startTime));
+      arr.sort((a, b) => {
+        // 'end' segments (continuation from prev day) sort first within a day
+        const aKey = a.segment === 'end' ? '00:00' : a.shift.startTime;
+        const bKey = b.segment === 'end' ? '00:00' : b.shift.startTime;
+        return aKey.localeCompare(bKey);
+      });
     }
     return map;
   }, [shifts]);
@@ -108,7 +123,7 @@ export function Calendar({
             inCurrentMonth={date.getMonth() === cursor.getMonth()}
             isToday={isSameDay(date, today)}
             isWeekend={isWeekend(date)}
-            shifts={shiftsByDate.get(toISODate(date)) ?? []}
+            chips={chipsByDate.get(toISODate(date)) ?? []}
             colorByTemplateId={colorByTemplateId}
             onAddShift={onAddShiftForDate}
             onEditShift={onEditShift}

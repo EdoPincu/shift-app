@@ -88,6 +88,15 @@ export function endsNextDay(startTime: string, endTime: string): boolean {
   return endTime <= startTime;
 }
 
+export function isOvernight(shift: { startTime: string; endTime: string }): boolean {
+  return endsNextDay(shift.startTime, shift.endTime);
+}
+
+export function nextISODate(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  return toISODate(new Date(y, m - 1, d + 1));
+}
+
 export function shiftDurationMinutes(startTime: string, endTime: string): number {
   const [sh, sm] = startTime.split(':').map(Number);
   const [eh, em] = endTime.split(':').map(Number);

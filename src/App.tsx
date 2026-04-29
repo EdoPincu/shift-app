@@ -60,18 +60,13 @@ export function App() {
   };
 
   const handleApplyMultiSlotTemplate = (template: Template, date: string) => {
-    let currentDate = date;
+    const [y, m, d] = date.split('-').map(Number);
+    const baseDate = new Date(y, m - 1, d);
     const drafts: ShiftDraft[] = template.slots.map((slot, idx) => {
-      if (idx > 0) {
-        const prevSlot = template.slots[idx - 1];
-        // If this slot starts at or before the previous slot ends, it crosses midnight → next day
-        if (slot.start <= prevSlot.end) {
-          const [y, m, d] = currentDate.split('-').map(Number);
-          currentDate = toISODate(new Date(y, m - 1, d + 1));
-        }
-      }
+      const slotDate = new Date(baseDate);
+      slotDate.setDate(baseDate.getDate() + idx);
       return {
-        date: currentDate,
+        date: toISODate(slotDate),
         startTime: slot.start,
         endTime: slot.end,
         name: template.name,
