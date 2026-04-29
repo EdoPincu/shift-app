@@ -36,6 +36,7 @@ export function loadShifts(): Shift[] {
           : undefined,
         partialMultiplier:
           typeof s.partialMultiplier === 'number' ? s.partialMultiplier : undefined,
+        color: typeof s.color === 'string' ? s.color : undefined,
         templateId: typeof s.templateId === 'string' ? s.templateId : undefined,
         templateSlotIndex:
           typeof s.templateSlotIndex === 'number' ? s.templateSlotIndex : undefined,
@@ -65,6 +66,9 @@ function parseSlot(raw: unknown): TemplateSlot | null {
       : undefined,
     partialMultiplier:
       typeof r.partialMultiplier === 'number' ? r.partialMultiplier : undefined,
+    name: typeof r.name === 'string' ? r.name : undefined,
+    color: typeof r.color === 'string' ? r.color : undefined,
+    sameDay: typeof r.sameDay === 'boolean' ? r.sameDay : undefined,
   };
 }
 

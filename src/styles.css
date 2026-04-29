@@ -770,15 +770,22 @@ button {
   opacity: 0.85;
 }
 
+.shift-chip__arrow {
+  opacity: 0.9;
+  font-weight: 700;
+}
+
 .shift-chip--seg-start {
   border-start-end-radius: 2px;
   border-end-end-radius: 2px;
+  border-inline-end: 2px dashed rgba(255, 255, 255, 0.45);
 }
 
 .shift-chip--seg-end {
   border-start-start-radius: 2px;
   border-end-start-radius: 2px;
-  opacity: 0.92;
+  border-inline-start: 2px dashed rgba(255, 255, 255, 0.45);
+  opacity: 0.93;
 }
 
 /* Modal */
@@ -893,6 +900,54 @@ button {
   display: flex;
   gap: 8px;
   margin-inline-start: auto;
+}
+
+/* Segmented control (e.g. day toggle) */
+.template-slot__day-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.segmented-control {
+  display: flex;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 3px;
+}
+
+.segmented-control__btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+
+.segmented-control__btn:hover:not(.segmented-control__btn--active) {
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+
+.segmented-control__btn--active {
+  background: var(--accent);
+  color: #0b1220;
+  font-weight: 700;
+}
+
+.template-slot__color-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 /* Template manager */

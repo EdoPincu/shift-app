@@ -62,14 +62,17 @@ export function App() {
   const handleApplyMultiSlotTemplate = (template: Template, date: string) => {
     const [y, m, d] = date.split('-').map(Number);
     const baseDate = new Date(y, m - 1, d);
+    let dayOffset = 0;
     const drafts: ShiftDraft[] = template.slots.map((slot, idx) => {
+      if (idx > 0 && !slot.sameDay) dayOffset++;
       const slotDate = new Date(baseDate);
-      slotDate.setDate(baseDate.getDate() + idx);
+      slotDate.setDate(baseDate.getDate() + dayOffset);
       return {
         date: toISODate(slotDate),
         startTime: slot.start,
         endTime: slot.end,
-        name: template.name,
+        name: slot.name || template.name,
+        color: slot.color || undefined,
         multipliers: slot.multipliers,
         partialMultiplier: slot.partialMultiplier,
         templateId: template.id,

@@ -5,6 +5,9 @@ export type TemplateSlot = {
   end: string;
   multipliers?: number[];
   partialMultiplier?: number;
+  name?: string;
+  color?: string;
+  sameDay?: boolean;
 };
 
 export type Shift = {
@@ -13,6 +16,7 @@ export type Shift = {
   startTime: string;
   endTime: string;
   name?: string;
+  color?: string;
   multipliers?: number[];
   partialMultiplier?: number;
   templateId?: string;

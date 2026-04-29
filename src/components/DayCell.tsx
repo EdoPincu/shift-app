@@ -48,7 +48,9 @@ export function DayCell({
         {chips.map((c) => {
           const s = c.shift;
           const color =
-            (s.templateId && colorByTemplateId[s.templateId]) || DEFAULT_SHIFT_COLOR;
+            s.color ||
+            (s.templateId && colorByTemplateId[s.templateId]) ||
+            DEFAULT_SHIFT_COLOR;
           const segmentClass =
             c.segment === 'start'
               ? ' shift-chip--seg-start'
@@ -60,15 +62,15 @@ export function DayCell({
           if (c.segment === 'start') {
             timeLabel = (
               <span className="shift-chip__time">
-                {s.startTime}–24:00
-                <span className="shift-chip__next">→</span>
+                {s.startTime}
+                <span className="shift-chip__arrow"> →</span>
               </span>
             );
           } else if (c.segment === 'end') {
             timeLabel = (
               <span className="shift-chip__time">
-                <span className="shift-chip__prev">←</span>
-                00:00–{s.endTime}
+                <span className="shift-chip__arrow">← </span>
+                {s.endTime}
               </span>
             );
           } else {
@@ -92,11 +94,11 @@ export function DayCell({
               {s.name && c.segment !== 'end' ? (
                 <span className="shift-chip__name">
                   {s.name}
-                  {c.segment === 'start' && <span className="shift-chip__next"> →</span>}
+                  {c.segment === 'start' && <span className="shift-chip__arrow"> →</span>}
                 </span>
               ) : s.name && c.segment === 'end' ? (
                 <span className="shift-chip__name">
-                  <span className="shift-chip__prev">← </span>
+                  <span className="shift-chip__arrow">← </span>
                   {s.name}
                 </span>
               ) : (
