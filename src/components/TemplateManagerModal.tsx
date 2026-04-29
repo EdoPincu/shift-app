@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import type { SalaryBlock, Template, TemplateDraft } from '../types';
+import type { SalaryBlock, Template, TemplateDraft, TemplateSlot } from '../types';
 import {
   blocksTotalHours,
   flattenBlocks,
   groupIntoBlocks,
   shiftDurationMinutes,
+  shiftPartialMinutes,
   wholeHoursOfShift,
 } from '../dateUtils';
 import { PALETTE } from '../templates';
@@ -21,24 +22,27 @@ type Props = {
   onDelete: (id: string) => void;
 };
 
+type SlotEditState = {
+  start: string;
+  end: string;
+  wholeBlocks: SalaryBlock[];
+  partialPct: number;
+};
+
 type EditState =
   | { mode: 'idle' }
   | {
       mode: 'editing';
       id: string;
       name: string;
-      start: string;
-      end: string;
-      blocks: SalaryBlock[];
       color: string;
+      slots: SlotEditState[];
     }
   | {
       mode: 'creating';
       name: string;
-      start: string;
-      end: string;
-      blocks: SalaryBlock[];
       color: string;
+      slots: SlotEditState[];
     };
 
 type PendingApply = {
@@ -47,18 +51,30 @@ type PendingApply = {
   affectedCount: number;
 };
 
-function defaultBlocksFor(start: string, end: string): SalaryBlock[] {
+function defaultWholeBlocksFor(start: string, end: string): SalaryBlock[] {
   const wh = wholeHoursOfShift(shiftDurationMinutes(start, end));
   return wh > 0 ? [{ hours: wh, percentage: 100 }] : [];
 }
 
-function blocksFromMultipliers(
-  multipliers: number[] | undefined,
-  start: string,
-  end: string,
-): SalaryBlock[] {
-  if (multipliers && multipliers.length > 0) return groupIntoBlocks(multipliers);
-  return defaultBlocksFor(start, end);
+function slotToEditState(slot: TemplateSlot): SlotEditState {
+  return {
+    start: slot.start,
+    end: slot.end,
+    wholeBlocks:
+      slot.multipliers && slot.multipliers.length > 0
+        ? groupIntoBlocks(slot.multipliers)
+        : defaultWholeBlocksFor(slot.start, slot.end),
+    partialPct: slot.partialMultiplier ?? 100,
+  };
+}
+
+function newEmptySlot(): SlotEditState {
+  return {
+    start: '07:00',
+    end: '15:00',
+    wholeBlocks: defaultWholeBlocksFor('07:00', '15:00'),
+    partialPct: 100,
+  };
 }
 
 export function TemplateManagerModal({
@@ -83,10 +99,8 @@ export function TemplateManagerModal({
       mode: 'editing',
       id: t.id,
       name: t.name,
-      start: t.start,
-      end: t.end,
-      blocks: blocksFromMultipliers(t.multipliers, t.start, t.end),
       color: t.color ?? PALETTE[0],
+      slots: t.slots.map(slotToEditState),
     });
   };
 
@@ -96,10 +110,8 @@ export function TemplateManagerModal({
     setEdit({
       mode: 'creating',
       name: '',
-      start: '07:00',
-      end: '15:00',
-      blocks: defaultBlocksFor('07:00', '15:00'),
       color: PALETTE[1],
+      slots: [newEmptySlot()],
     });
   };
 
@@ -109,32 +121,65 @@ export function TemplateManagerModal({
     setError(null);
   };
 
+  const updateSlot = (idx: number, patch: Partial<SlotEditState>) => {
+    if (edit.mode === 'idle') return;
+    setEdit({
+      ...edit,
+      slots: edit.slots.map((s, i) => (i === idx ? { ...s, ...patch } : s)),
+    });
+    setError(null);
+  };
+
+  const addSlot = () => {
+    if (edit.mode === 'idle') return;
+    setEdit({ ...edit, slots: [...edit.slots, newEmptySlot()] });
+    setError(null);
+  };
+
+  const removeSlot = (idx: number) => {
+    if (edit.mode === 'idle' || edit.slots.length <= 1) return;
+    setEdit({ ...edit, slots: edit.slots.filter((_, i) => i !== idx) });
+    setError(null);
+  };
+
   const saveEdit = () => {
     if (edit.mode === 'idle') return;
-    if (!edit.name.trim() || !edit.start || !edit.end) return;
+    if (!edit.name.trim()) return;
 
-    const wholeHours = wholeHoursOfShift(shiftDurationMinutes(edit.start, edit.end));
-    const totalAssigned = blocksTotalHours(edit.blocks);
-    let savedMultipliers: number[] | undefined;
-    if (totalAssigned === 0) {
-      savedMultipliers = undefined;
-    } else if (totalAssigned < wholeHours) {
-      setError('לא הגדרת משכורת לכל השעות במשמרת');
-      return;
-    } else if (totalAssigned > wholeHours) {
-      setError('הגדרת יותר שעות ממה שיש במשמרת');
-      return;
-    } else {
-      savedMultipliers = flattenBlocks(edit.blocks);
+    const slotDrafts: TemplateSlot[] = [];
+    for (let i = 0; i < edit.slots.length; i++) {
+      const slot = edit.slots[i];
+      if (!slot.start || !slot.end) {
+        setError(`חסרות שעות בתבנית ${i + 1}`);
+        return;
+      }
+      const durationMin = shiftDurationMinutes(slot.start, slot.end);
+      const wholeHours = wholeHoursOfShift(durationMin);
+      const partialMin = shiftPartialMinutes(durationMin);
+      const totalAssigned = blocksTotalHours(slot.wholeBlocks);
+      if (wholeHours > 0) {
+        if (totalAssigned < wholeHours) {
+          setError(`לא הגדרת משכורת לכל השעות במשמרת ${i + 1}`);
+          return;
+        }
+        if (totalAssigned > wholeHours) {
+          setError(`הגדרת יותר שעות ממה שיש במשמרת ${i + 1}`);
+          return;
+        }
+      }
+      slotDrafts.push({
+        start: slot.start,
+        end: slot.end,
+        multipliers: slot.wholeBlocks.length > 0 ? flattenBlocks(slot.wholeBlocks) : undefined,
+        partialMultiplier: partialMin > 0 ? slot.partialPct : undefined,
+      });
     }
     setError(null);
 
     const draft: TemplateDraft = {
       name: edit.name.trim(),
-      start: edit.start,
-      end: edit.end,
-      multipliers: savedMultipliers,
       color: edit.color,
+      slots: slotDrafts,
     };
     if (edit.mode === 'creating') {
       onAdd(draft);
@@ -167,8 +212,6 @@ export function TemplateManagerModal({
   };
 
   const editorOpen = edit.mode !== 'idle';
-  const editorDuration =
-    edit.mode === 'idle' ? 0 : shiftDurationMinutes(edit.start, edit.end);
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -184,6 +227,7 @@ export function TemplateManagerModal({
         <ul className="template-list">
           {templates.map((t) => {
             const isEditingThis = edit.mode === 'editing' && edit.id === t.id;
+            const slotCount = t.slots.length;
             return (
               <li key={t.id} className="template-list__item">
                 {isEditingThis ? null : (
@@ -195,9 +239,19 @@ export function TemplateManagerModal({
                         aria-hidden="true"
                       />
                       <div>
-                        <div className="template-list__name">{t.name}</div>
+                        <div className="template-list__name">
+                          {t.name}
+                          {slotCount > 1 && (
+                            <span className="template-list__badge">{slotCount} משמרות</span>
+                          )}
+                        </div>
                         <div className="template-list__time">
-                          {t.start}–{t.end}
+                          {t.slots.map((s, i) => (
+                            <span key={i}>
+                              {i > 0 && ' · '}
+                              {s.start}–{s.end}
+                            </span>
+                          ))}
                         </div>
                       </div>
                     </div>
@@ -271,24 +325,6 @@ export function TemplateManagerModal({
                 placeholder="לדוגמה: משמרת בוקר"
               />
             </label>
-            <div className="field-row">
-              <label className="field">
-                <span className="field__label">שעת התחלה</span>
-                <input
-                  type="time"
-                  value={edit.start}
-                  onChange={(e) => setEdit({ ...edit, start: e.target.value })}
-                />
-              </label>
-              <label className="field">
-                <span className="field__label">שעת סיום</span>
-                <input
-                  type="time"
-                  value={edit.end}
-                  onChange={(e) => setEdit({ ...edit, end: e.target.value })}
-                />
-              </label>
-            </div>
             <label className="field">
               <span className="field__label">צבע</span>
               <ColorPicker
@@ -296,15 +332,64 @@ export function TemplateManagerModal({
                 onChange={(color) => setEdit({ ...edit, color })}
               />
             </label>
-            <HourlyMultipliers
-              durationMinutes={editorDuration}
-              blocks={edit.blocks}
-              onChange={(blocks) => {
-                setEdit({ ...edit, blocks });
-                setError(null);
-              }}
-            />
+
+            <div className="template-slots">
+              {edit.slots.map((slot, i) => (
+                <div key={i} className="template-slot">
+                  <div className="template-slot__header">
+                    <h4 className="template-slot__title">משמרת {i + 1}</h4>
+                    {edit.slots.length > 1 && (
+                      <button
+                        type="button"
+                        className="salary-block__remove"
+                        onClick={() => removeSlot(i)}
+                        aria-label="הסר משמרת מהתבנית"
+                      >
+                        ×
+                      </button>
+                    )}
+                  </div>
+                  <div className="field-row">
+                    <label className="field">
+                      <span className="field__label">שעת התחלה</span>
+                      <input
+                        type="time"
+                        value={slot.start}
+                        onChange={(e) => updateSlot(i, { start: e.target.value })}
+                      />
+                    </label>
+                    <label className="field">
+                      <span className="field__label">שעת סיום</span>
+                      <input
+                        type="time"
+                        value={slot.end}
+                        onChange={(e) => updateSlot(i, { end: e.target.value })}
+                      />
+                    </label>
+                  </div>
+                  <HourlyMultipliers
+                    durationMinutes={shiftDurationMinutes(slot.start, slot.end)}
+                    wholeBlocks={slot.wholeBlocks}
+                    partialPct={slot.partialPct}
+                    onWholeBlocksChange={(wholeBlocks) =>
+                      updateSlot(i, { wholeBlocks })
+                    }
+                    onPartialPctChange={(partialPct) => updateSlot(i, { partialPct })}
+                  />
+                </div>
+              ))}
+
+              <button
+                type="button"
+                className="ghost-btn ghost-btn--small"
+                onClick={addSlot}
+              >
+                + הוסף משמרת לתבנית
+              </button>
+            </div>
+
             {error && <p className="salary-blocks__error">{error}</p>}
+
             <div className="modal__actions-right">
               <button type="button" className="ghost-btn" onClick={cancelEdit}>
                 ביטול

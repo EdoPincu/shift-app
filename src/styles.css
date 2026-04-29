@@ -151,6 +151,119 @@ button {
   white-space: nowrap;
 }
 
+/* Upcoming shifts list */
+.upcoming-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.upcoming-list__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+}
+
+.upcoming-list__dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 999px;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.06);
+}
+
+.upcoming-list__info {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+  flex: 1;
+}
+
+.upcoming-list__date {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.upcoming-list__time {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Streak grouping in upcoming list */
+.upcoming-list__streak-group {
+  position: relative;
+  border: 1px solid rgba(245, 158, 11, 0.45);
+  border-radius: 12px;
+  padding: 14px 8px 6px;
+  margin-top: 12px;
+  background: linear-gradient(
+    180deg,
+    rgba(245, 158, 11, 0.1),
+    rgba(245, 158, 11, 0.02)
+  );
+}
+
+.upcoming-list__streak-label {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-elevated);
+  color: #fbbf24;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 158, 11, 0.6);
+}
+
+.upcoming-list__streak-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.upcoming-list__item--streak {
+  padding: 4px 4px;
+}
+
+/* Streak count card */
+.dashboard__card--streak {
+  background: linear-gradient(
+      180deg,
+      rgba(245, 158, 11, 0.1),
+      rgba(245, 158, 11, 0.02)
+    ),
+    var(--bg-elevated);
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+.dashboard__total--streak {
+  color: #fbbf24;
+}
+
+/* Streak chip outline on calendar */
+.shift-chip--streak {
+  box-shadow:
+    0 0 0 1.5px rgba(251, 191, 36, 0.85),
+    0 1px 0 rgba(255, 255, 255, 0.08) inset,
+    0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
 /* Salary blocks (per-hour multipliers as a row table) */
 .salary-blocks {
   display: flex;
@@ -225,6 +338,42 @@ button {
   min-width: 0;
 }
 
+.salary-pill__input {
+  flex: 1;
+  min-width: 0;
+  width: 50px;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  padding: 0;
+}
+
+.salary-pill__input:focus {
+  outline: none;
+}
+
+.salary-pill__input::-webkit-outer-spin-button,
+.salary-pill__input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.salary-pill__input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.salary-pill__suffix {
+  font-size: 13px;
+  color: var(--text-muted);
+  padding-inline-end: 4px;
+}
+
 .salary-block__remove {
   width: 28px;
   height: 28px;
@@ -270,6 +419,34 @@ button {
   border: 1px solid rgba(239, 68, 68, 0.4);
   border-radius: 8px;
   padding: 8px 12px;
+}
+
+.salary-block--partial {
+  position: relative;
+  opacity: 0.95;
+}
+
+.salary-block--partial .salary-pill--locked {
+  background: rgba(56, 189, 248, 0.06);
+  border-color: rgba(56, 189, 248, 0.25);
+}
+
+.salary-block--partial .salary-pill__value {
+  font-variant-numeric: tabular-nums;
+}
+
+.salary-block__partial-tag {
+  position: absolute;
+  top: -8px;
+  inset-inline-start: 8px;
+  background: var(--bg-cell);
+  color: var(--accent);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 999px;
+  border: 1px solid rgba(56, 189, 248, 0.4);
 }
 
 /* Apply-to-existing confirmation block */
@@ -701,6 +878,66 @@ button {
   color: var(--text-muted);
   font-size: 13px;
   font-variant-numeric: tabular-nums;
+}
+
+.template-list__badge {
+  display: inline-block;
+  margin-inline-start: 8px;
+  background: rgba(56, 189, 248, 0.16);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 8px;
+  border-radius: 999px;
+  vertical-align: middle;
+}
+
+/* Multi-slot template editor */
+.template-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.template-slot {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--bg-cell-muted);
+}
+
+.template-slot__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.template-slot__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+}
+
+/* Template button — multi-slot variant */
+.template-btn--multi {
+  border-color: rgba(56, 189, 248, 0.4);
+  background: rgba(56, 189, 248, 0.06);
+}
+
+.template-btn__badge {
+  display: inline-block;
+  margin-inline-start: 8px;
+  background: var(--accent);
+  color: #0b1220;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 1px 8px;
+  border-radius: 999px;
 }
 
 .template-list__actions {

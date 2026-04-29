@@ -6,11 +6,11 @@ import { TemplateManagerModal } from './components/TemplateManagerModal';
 import { useShifts } from './hooks/useShifts';
 import { useTemplates } from './hooks/useTemplates';
 import { useHourlyRate } from './hooks/useHourlyRate';
-import { startOfMonth } from './dateUtils';
-import type { Shift, ShiftDraft, TemplateDraft } from './types';
+import { annotateShiftsWithStreak, startOfMonth, toISODate } from './dateUtils';
+import type { Shift, ShiftDraft, Template, TemplateDraft } from './types';
 
 export function App() {
-  const { shifts, addShift, updateShift, deleteShift } = useShifts();
+  const { shifts, addShift, addManyShifts, updateShift, deleteShift } = useShifts();
   const { templates, addTemplate, updateTemplate, deleteTemplate } = useTemplates();
   const { rate: hourlyRate, setRate: setHourlyRate } = useHourlyRate();
 
@@ -29,6 +29,8 @@ export function App() {
     }
     return counts;
   }, [shifts]);
+
+  const annotatedShifts = useMemo(() => annotateShiftsWithStreak(shifts), [shifts]);
 
   const openNew = (date?: Date) => {
     setEditing(null);
@@ -57,6 +59,32 @@ export function App() {
     closeShiftModal();
   };
 
+  const handleApplyMultiSlotTemplate = (template: Template, date: string) => {
+    let currentDate = date;
+    const drafts: ShiftDraft[] = template.slots.map((slot, idx) => {
+      if (idx > 0) {
+        const prevSlot = template.slots[idx - 1];
+        // If this slot starts at or before the previous slot ends, it crosses midnight → next day
+        if (slot.start <= prevSlot.end) {
+          const [y, m, d] = currentDate.split('-').map(Number);
+          currentDate = toISODate(new Date(y, m - 1, d + 1));
+        }
+      }
+      return {
+        date: currentDate,
+        startTime: slot.start,
+        endTime: slot.end,
+        name: template.name,
+        multipliers: slot.multipliers,
+        partialMultiplier: slot.partialMultiplier,
+        templateId: template.id,
+        templateSlotIndex: idx,
+      };
+    });
+    addManyShifts(drafts);
+    closeShiftModal();
+  };
+
   const handleTemplateUpdate = (
     id: string,
     draft: TemplateDraft,
@@ -66,11 +94,15 @@ export function App() {
     if (!applyToShifts) return;
     for (const s of shifts) {
       if (s.templateId !== id) continue;
+      const slotIdx = s.templateSlotIndex ?? 0;
+      const slot = draft.slots[slotIdx];
+      if (!slot) continue; // orphan: slot removed by user; leave shift untouched
       updateShift(s.id, {
         name: draft.name,
-        startTime: draft.start,
-        endTime: draft.end,
-        multipliers: draft.multipliers,
+        startTime: slot.start,
+        endTime: slot.end,
+        multipliers: slot.multipliers,
+        partialMultiplier: slot.partialMultiplier,
       });
     }
   };
@@ -79,7 +111,7 @@ export function App() {
     <div className="app">
       <div className="app__main">
         <Calendar
-          shifts={shifts}
+          shifts={annotatedShifts}
           templates={templates}
           cursor={cursor}
           onCursorChange={setCursor}
@@ -89,7 +121,8 @@ export function App() {
           onManageTemplates={() => setTemplateModalOpen(true)}
         />
         <Dashboard
-          shifts={shifts}
+          shifts={annotatedShifts}
+          templates={templates}
           cursor={cursor}
           hourlyRate={hourlyRate}
           onHourlyRateChange={setHourlyRate}
@@ -104,6 +137,7 @@ export function App() {
         onClose={closeShiftModal}
         onSave={handleSave}
         onDelete={handleDelete}
+        onApplyMultiSlotTemplate={handleApplyMultiSlotTemplate}
       />
       <TemplateManagerModal
         open={templateModalOpen}

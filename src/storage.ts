@@ -1,4 +1,4 @@
-import type { Shift, Template } from './types';
+import type { Shift, Template, TemplateSlot } from './types';
 import { DEFAULT_TEMPLATES } from './templates';
 
 const SHIFTS_KEY = 'shifts:v1';
@@ -25,9 +25,20 @@ export function loadShifts(): Shift[] {
         date: s.date,
         startTime: s.startTime,
         endTime: s.endTime,
-        name: typeof s.name === 'string' ? s.name : typeof s.templateName === 'string' ? s.templateName : undefined,
-        multipliers: Array.isArray(s.multipliers) ? s.multipliers.filter((n: unknown) => typeof n === 'number') : undefined,
+        name:
+          typeof s.name === 'string'
+            ? s.name
+            : typeof s.templateName === 'string'
+              ? s.templateName
+              : undefined,
+        multipliers: Array.isArray(s.multipliers)
+          ? s.multipliers.filter((n: unknown) => typeof n === 'number')
+          : undefined,
+        partialMultiplier:
+          typeof s.partialMultiplier === 'number' ? s.partialMultiplier : undefined,
         templateId: typeof s.templateId === 'string' ? s.templateId : undefined,
+        templateSlotIndex:
+          typeof s.templateSlotIndex === 'number' ? s.templateSlotIndex : undefined,
       }));
   } catch {
     return [];
@@ -42,31 +53,59 @@ export function saveShifts(shifts: Shift[]): void {
   }
 }
 
+function parseSlot(raw: unknown): TemplateSlot | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const r = raw as Record<string, unknown>;
+  if (typeof r.start !== 'string' || typeof r.end !== 'string') return null;
+  return {
+    start: r.start,
+    end: r.end,
+    multipliers: Array.isArray(r.multipliers)
+      ? (r.multipliers as unknown[]).filter((n): n is number => typeof n === 'number')
+      : undefined,
+    partialMultiplier:
+      typeof r.partialMultiplier === 'number' ? r.partialMultiplier : undefined,
+  };
+}
+
 export function loadTemplates(): Template[] {
   try {
     const raw = localStorage.getItem(TEMPLATES_KEY);
     if (!raw) return DEFAULT_TEMPLATES;
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return DEFAULT_TEMPLATES;
-    const valid: Template[] = parsed
-      .filter(
-        (t) =>
-          t &&
-          typeof t.id === 'string' &&
-          typeof t.name === 'string' &&
-          typeof t.start === 'string' &&
-          typeof t.end === 'string',
-      )
-      .map((t) => ({
-        id: t.id,
-        name: t.name,
-        start: t.start,
-        end: t.end,
-        multipliers: Array.isArray(t.multipliers)
-          ? t.multipliers.filter((n: unknown) => typeof n === 'number')
-          : undefined,
-        color: typeof t.color === 'string' ? t.color : undefined,
-      }));
+    const mapped: (Template | null)[] = parsed
+      .filter((t) => t && typeof t.id === 'string' && typeof t.name === 'string')
+      .map((t) => {
+        let slots: TemplateSlot[] = [];
+        if (Array.isArray(t.slots) && t.slots.length > 0) {
+          slots = t.slots
+            .map(parseSlot)
+            .filter((s: TemplateSlot | null): s is TemplateSlot => s !== null);
+        } else if (typeof t.start === 'string' && typeof t.end === 'string') {
+          slots = [
+            {
+              start: t.start,
+              end: t.end,
+              multipliers: Array.isArray(t.multipliers)
+                ? t.multipliers.filter((n: unknown) => typeof n === 'number')
+                : undefined,
+              partialMultiplier:
+                typeof t.partialMultiplier === 'number' ? t.partialMultiplier : undefined,
+            },
+          ];
+        }
+        if (slots.length === 0) return null;
+        return {
+          id: t.id,
+          name: t.name,
+          color: typeof t.color === 'string' ? t.color : undefined,
+          slots,
+        } satisfies Template;
+      });
+    const valid: Template[] = mapped.filter(
+      (t): t is Template => t !== null,
+    );
     return valid.length ? valid : DEFAULT_TEMPLATES;
   } catch {
     return DEFAULT_TEMPLATES;

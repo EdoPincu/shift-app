@@ -5,6 +5,7 @@ import {
   flattenBlocks,
   groupIntoBlocks,
   shiftDurationMinutes,
+  shiftPartialMinutes,
   toISODate,
   wholeHoursOfShift,
 } from '../dateUtils';
@@ -18,20 +19,21 @@ type Props = {
   onClose: () => void;
   onSave: (draft: ShiftDraft) => void;
   onDelete: (id: string) => void;
+  onApplyMultiSlotTemplate: (template: Template, date: string) => void;
 };
 
-function defaultBlocksFor(start: string, end: string): SalaryBlock[] {
+function defaultWholeBlocksFor(start: string, end: string): SalaryBlock[] {
   const wh = wholeHoursOfShift(shiftDurationMinutes(start, end));
   return wh > 0 ? [{ hours: wh, percentage: 100 }] : [];
 }
 
-function blocksFromMultipliers(
+function wholeBlocksFromMultipliers(
   multipliers: number[] | undefined,
   start: string,
   end: string,
 ): SalaryBlock[] {
   if (multipliers && multipliers.length > 0) return groupIntoBlocks(multipliers);
-  return defaultBlocksFor(start, end);
+  return defaultWholeBlocksFor(start, end);
 }
 
 export function NewShiftModal({
@@ -42,13 +44,16 @@ export function NewShiftModal({
   onClose,
   onSave,
   onDelete,
+  onApplyMultiSlotTemplate,
 }: Props) {
   const [date, setDate] = useState<string>(toISODate(initialDate));
   const [startTime, setStartTime] = useState<string>('07:00');
   const [endTime, setEndTime] = useState<string>('15:00');
   const [name, setName] = useState<string>('');
-  const [blocks, setBlocks] = useState<SalaryBlock[]>([]);
+  const [wholeBlocks, setWholeBlocks] = useState<SalaryBlock[]>([]);
+  const [partialPct, setPartialPct] = useState<number>(100);
   const [templateId, setTemplateId] = useState<string | undefined>(undefined);
+  const [templateSlotIndex, setTemplateSlotIndex] = useState<number | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -59,15 +64,21 @@ export function NewShiftModal({
       setStartTime(editing.startTime);
       setEndTime(editing.endTime);
       setName(editing.name ?? '');
-      setBlocks(blocksFromMultipliers(editing.multipliers, editing.startTime, editing.endTime));
+      setWholeBlocks(
+        wholeBlocksFromMultipliers(editing.multipliers, editing.startTime, editing.endTime),
+      );
+      setPartialPct(editing.partialMultiplier ?? 100);
       setTemplateId(editing.templateId);
+      setTemplateSlotIndex(editing.templateSlotIndex);
     } else {
       setDate(toISODate(initialDate));
       setStartTime('07:00');
       setEndTime('15:00');
       setName('');
-      setBlocks(defaultBlocksFor('07:00', '15:00'));
+      setWholeBlocks(defaultWholeBlocksFor('07:00', '15:00'));
+      setPartialPct(100);
       setTemplateId(undefined);
+      setTemplateSlotIndex(undefined);
     }
   }, [open, editing, initialDate]);
 
@@ -79,16 +90,30 @@ export function NewShiftModal({
   if (!open) return null;
 
   const applyTemplate = (t: Template) => {
-    setStartTime(t.start);
-    setEndTime(t.end);
+    if (t.slots.length > 1) {
+      // Multi-slot template — inject all shifts on the modal's current date.
+      onApplyMultiSlotTemplate(t, date);
+      return;
+    }
+    const slot = t.slots[0];
+    if (!slot) return;
+    setStartTime(slot.start);
+    setEndTime(slot.end);
     setName(t.name);
-    setBlocks(blocksFromMultipliers(t.multipliers, t.start, t.end));
+    setWholeBlocks(wholeBlocksFromMultipliers(slot.multipliers, slot.start, slot.end));
+    setPartialPct(slot.partialMultiplier ?? 100);
     setTemplateId(t.id);
+    setTemplateSlotIndex(0);
     setError(null);
   };
 
-  const handleBlocksChange = (next: SalaryBlock[]) => {
-    setBlocks(next);
+  const handleWholeBlocksChange = (next: SalaryBlock[]) => {
+    setWholeBlocks(next);
+    setError(null);
+  };
+
+  const handlePartialPctChange = (next: number) => {
+    setPartialPct(next);
     setError(null);
   };
 
@@ -96,20 +121,23 @@ export function NewShiftModal({
     if (!date || !startTime || !endTime) return;
 
     const wholeHours = wholeHoursOfShift(durationMinutes);
-    const totalAssigned = blocksTotalHours(blocks);
-    let savedMultipliers: number[] | undefined;
+    const partialMin = shiftPartialMinutes(durationMinutes);
+    const totalAssigned = blocksTotalHours(wholeBlocks);
 
-    if (totalAssigned === 0) {
-      savedMultipliers = undefined;
-    } else if (totalAssigned < wholeHours) {
-      setError('לא הגדרת משכורת לכל השעות במשמרת');
-      return;
-    } else if (totalAssigned > wholeHours) {
-      setError('הגדרת יותר שעות ממה שיש במשמרת');
-      return;
-    } else {
-      savedMultipliers = flattenBlocks(blocks);
+    if (wholeHours > 0) {
+      if (totalAssigned < wholeHours) {
+        setError('לא הגדרת משכורת לכל השעות במשמרת');
+        return;
+      }
+      if (totalAssigned > wholeHours) {
+        setError('הגדרת יותר שעות ממה שיש במשמרת');
+        return;
+      }
     }
+
+    const savedMultipliers =
+      wholeBlocks.length > 0 ? flattenBlocks(wholeBlocks) : undefined;
+    const savedPartialMultiplier = partialMin > 0 ? partialPct : undefined;
 
     onSave({
       date,
@@ -117,7 +145,9 @@ export function NewShiftModal({
       endTime,
       name: name.trim() || undefined,
       multipliers: savedMultipliers,
+      partialMultiplier: savedPartialMultiplier,
       templateId,
+      templateSlotIndex,
     });
   };
 
@@ -134,19 +164,34 @@ export function NewShiftModal({
 
         {templates.length > 0 && (
           <div className="templates">
-            {templates.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                className={`template-btn${templateId === t.id ? ' template-btn--active' : ''}`}
-                onClick={() => applyTemplate(t)}
-              >
-                <span className="template-btn__name">{t.name}</span>
-                <span className="template-btn__time">
-                  {t.start}–{t.end}
-                </span>
-              </button>
-            ))}
+            {templates.map((t) => {
+              const multi = t.slots.length > 1;
+              const firstSlot = t.slots[0];
+              const isActive = templateId === t.id && !multi;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  className={`template-btn${isActive ? ' template-btn--active' : ''}${multi ? ' template-btn--multi' : ''}`}
+                  onClick={() => applyTemplate(t)}
+                  title={multi ? `הוסף ${t.slots.length} משמרות בו זמנית` : undefined}
+                >
+                  <span className="template-btn__name">
+                    {t.name}
+                    {multi && (
+                      <span className="template-btn__badge">{t.slots.length} משמרות</span>
+                    )}
+                  </span>
+                  <span className="template-btn__time">
+                    {multi
+                      ? t.slots.map((s) => `${s.start}–${s.end}`).join(' · ')
+                      : firstSlot
+                        ? `${firstSlot.start}–${firstSlot.end}`
+                        : ''}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         )}
 
@@ -158,6 +203,7 @@ export function NewShiftModal({
             onChange={(e) => {
               setName(e.target.value);
               setTemplateId(undefined);
+              setTemplateSlotIndex(undefined);
             }}
             placeholder="לדוגמה: עבודה אצל דני"
           />
@@ -177,6 +223,7 @@ export function NewShiftModal({
               onChange={(e) => {
                 setStartTime(e.target.value);
                 setTemplateId(undefined);
+                setTemplateSlotIndex(undefined);
               }}
             />
           </label>
@@ -188,6 +235,7 @@ export function NewShiftModal({
               onChange={(e) => {
                 setEndTime(e.target.value);
                 setTemplateId(undefined);
+                setTemplateSlotIndex(undefined);
               }}
             />
           </label>
@@ -195,8 +243,10 @@ export function NewShiftModal({
 
         <HourlyMultipliers
           durationMinutes={durationMinutes}
-          blocks={blocks}
-          onChange={handleBlocksChange}
+          wholeBlocks={wholeBlocks}
+          partialPct={partialPct}
+          onWholeBlocksChange={handleWholeBlocksChange}
+          onPartialPctChange={handlePartialPctChange}
         />
 
         {error && <p className="salary-blocks__error">{error}</p>}

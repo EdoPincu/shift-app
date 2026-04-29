@@ -1,4 +1,4 @@
-import type { Shift } from '../types';
+import type { AnnotatedShift, Shift } from '../types';
 import { endsNextDay } from '../dateUtils';
 import { DEFAULT_SHIFT_COLOR } from '../templates';
 
@@ -7,7 +7,7 @@ type Props = {
   inCurrentMonth: boolean;
   isToday: boolean;
   isWeekend: boolean;
-  shifts: Shift[];
+  shifts: AnnotatedShift[];
   colorByTemplateId: Record<string, string>;
   onAddShift: (date: Date) => void;
   onEditShift: (shift: Shift) => void;
@@ -37,12 +37,13 @@ export function DayCell({
           return (
             <span
               key={s.id}
-              className="shift-chip"
+              className={`shift-chip${s.isStreak ? ' shift-chip--streak' : ''}`}
               style={{ background: color }}
               onClick={(e) => {
                 e.stopPropagation();
                 onEditShift(s);
               }}
+              title={s.isStreak ? 'רצף משמרות' : undefined}
             >
               {s.name ? (
                 <span className="shift-chip__name">{s.name}</span>

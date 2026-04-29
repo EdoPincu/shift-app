@@ -20,6 +20,11 @@ export function useShifts() {
     setShifts((prev) => [...prev, { ...draft, id: makeId() }]);
   }, []);
 
+  const addManyShifts = useCallback((drafts: ShiftDraft[]) => {
+    if (drafts.length === 0) return;
+    setShifts((prev) => [...prev, ...drafts.map((d) => ({ ...d, id: makeId() }))]);
+  }, []);
+
   const updateShift = useCallback((id: string, patch: Partial<ShiftDraft>) => {
     setShifts((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)));
   }, []);
@@ -28,5 +33,5 @@ export function useShifts() {
     setShifts((prev) => prev.filter((s) => s.id !== id));
   }, []);
 
-  return { shifts, addShift, updateShift, deleteShift };
+  return { shifts, addShift, addManyShifts, updateShift, deleteShift };
 }

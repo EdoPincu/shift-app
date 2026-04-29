@@ -1,4 +1,4 @@
-import type { SalaryBlock, Shift } from './types';
+import type { AnnotatedShift, SalaryBlock, Shift } from './types';
 
 const PCT_MIN = 100;
 const PCT_MAX = 350;
@@ -129,21 +129,20 @@ export function monthTotalMinutes(shifts: Shift[], cursor: Date): number {
 
 export function wholeHoursOfShift(durationMinutes: number): number {
   if (durationMinutes <= 0) return 0;
-  return Math.max(1, Math.floor(durationMinutes / 60));
+  return Math.floor(durationMinutes / 60);
 }
 
-export function shiftHourBuckets(durationMinutes: number): number[] {
-  if (durationMinutes <= 0) return [];
-  const fullHours = Math.max(1, Math.floor(durationMinutes / 60));
-  const buckets: number[] = [];
-  for (let i = 0; i < fullHours; i++) {
-    if (i < fullHours - 1) {
-      buckets.push(60);
-    } else {
-      buckets.push(durationMinutes - i * 60);
-    }
-  }
-  return buckets;
+export function shiftPartialMinutes(durationMinutes: number): number {
+  if (durationMinutes <= 0) return 0;
+  return durationMinutes - Math.floor(durationMinutes / 60) * 60;
+}
+
+export function shiftPartialFraction(durationMinutes: number): number {
+  return shiftPartialMinutes(durationMinutes) / 60;
+}
+
+export function formatHoursDecimal(durationMinutes: number): string {
+  return (Math.max(0, durationMinutes) / 60).toFixed(2);
 }
 
 export function shiftSalary(
@@ -151,25 +150,35 @@ export function shiftSalary(
   endTime: string,
   rate: number,
   multipliers: number[] | undefined,
+  partialMultiplier: number | undefined,
 ): number {
   const totalMin = shiftDurationMinutes(startTime, endTime);
-  const buckets = shiftHourBuckets(totalMin);
+  const wholeHours = Math.floor(totalMin / 60);
+  const partialMin = totalMin - wholeHours * 60;
+
   let total = 0;
-  for (let i = 0; i < buckets.length; i++) {
-    const pct = multipliers?.[i] ?? 100;
-    total += (buckets[i] / 60) * rate * (pct / 100);
+  for (let i = 0; i < wholeHours; i++) {
+    total += rate * ((multipliers?.[i] ?? 100) / 100);
+  }
+  if (partialMin > 0) {
+    total += (partialMin / 60) * rate * ((partialMultiplier ?? 100) / 100);
   }
   return total;
 }
 
 export function monthTotalSalary(shifts: Shift[], cursor: Date, rate: number): number {
   return shiftsInMonth(shifts, cursor).reduce(
-    (acc, s) => acc + shiftSalary(s.startTime, s.endTime, rate, s.multipliers),
+    (acc, s) =>
+      acc + shiftSalary(s.startTime, s.endTime, rate, s.multipliers, s.partialMultiplier),
     0,
   );
 }
 
-export function upcomingShifts(shifts: Shift[], n: number, now: Date = new Date()): Shift[] {
+export function upcomingShifts<T extends Shift>(
+  shifts: T[],
+  n: number,
+  now: Date = new Date(),
+): T[] {
   const today = toISODate(now);
   return [...shifts]
     .filter((s) => s.date >= today)
@@ -195,4 +204,119 @@ export function formatShiftDate(isoDate: string, now: Date = new Date()): string
 
 export function formatILS(amount: number): string {
   return `₪ ${Math.round(amount).toLocaleString('he-IL')}`;
+}
+
+/* ---------------- Streaks ---------------- */
+
+export const STREAK_THRESHOLD_MINUTES = 7 * 60 + 37; // 457
+const FIRST_SHIFT_MIN_HOUR_MIN = 13 * 60; // 13:00
+
+function parseISODateLocal(iso: string): Date {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, m - 1, d);
+}
+
+export function shiftAbsoluteStartMinutes(shift: Shift): number {
+  const date = parseISODateLocal(shift.date);
+  const dayMinutes = Math.round(date.getTime() / 60000);
+  const [sh, sm] = shift.startTime.split(':').map(Number);
+  return dayMinutes + sh * 60 + sm;
+}
+
+export function shiftAbsoluteEndMinutes(shift: Shift): number {
+  const start = shiftAbsoluteStartMinutes(shift);
+  return start + shiftDurationMinutes(shift.startTime, shift.endTime);
+}
+
+export function shiftTouchesWeekend(shift: Shift): boolean {
+  const date = parseISODateLocal(shift.date);
+  const startDay = date.getDay();
+  if (startDay === 5 || startDay === 6) return true;
+  if (endsNextDay(shift.startTime, shift.endTime)) {
+    const endDay = (startDay + 1) % 7;
+    if (endDay === 5 || endDay === 6) return true;
+  }
+  return false;
+}
+
+export function isStreakPair(a: Shift, b: Shift): boolean {
+  // a must be chronologically before b
+  const gap = shiftAbsoluteStartMinutes(b) - shiftAbsoluteEndMinutes(a);
+  if (gap < 0 || gap >= STREAK_THRESHOLD_MINUTES) return false;
+  if (shiftTouchesWeekend(a) || shiftTouchesWeekend(b)) return false;
+  const [sh, sm] = a.startTime.split(':').map(Number);
+  const startMin = sh * 60 + sm;
+  if (startMin < FIRST_SHIFT_MIN_HOUR_MIN) return false;
+  return true;
+}
+
+function sortShiftsChronologically(shifts: Shift[]): Shift[] {
+  return [...shifts].sort(
+    (a, b) => shiftAbsoluteStartMinutes(a) - shiftAbsoluteStartMinutes(b),
+  );
+}
+
+export type StreakPair = { firstId: string; secondId: string };
+
+export function findStreakPairs(shifts: Shift[]): StreakPair[] {
+  const sorted = sortShiftsChronologically(shifts);
+  const pairs: StreakPair[] = [];
+  for (let i = 0; i < sorted.length - 1; i++) {
+    if (isStreakPair(sorted[i], sorted[i + 1])) {
+      pairs.push({ firstId: sorted[i].id, secondId: sorted[i + 1].id });
+    }
+  }
+  return pairs;
+}
+
+export function streakIdSet(shifts: Shift[]): Set<string> {
+  const ids = new Set<string>();
+  for (const p of findStreakPairs(shifts)) {
+    ids.add(p.firstId);
+    ids.add(p.secondId);
+  }
+  return ids;
+}
+
+/**
+ * Returns a new array of shifts each annotated with `isStreak: boolean`.
+ * `isStreak` is true if the shift is part of any streak pair detected via `findStreakPairs`.
+ * Streak detection considers the *full* shift list, so cross-month and multi-day pairs
+ * (e.g. Sun 22:00→Mon 06:00 → Mon 13:00→…) are picked up correctly.
+ */
+export function annotateShiftsWithStreak(shifts: Shift[]): AnnotatedShift[] {
+  const ids = streakIdSet(shifts);
+  return shifts.map((s) => ({ ...s, isStreak: ids.has(s.id) }));
+}
+
+export function streakCountInMonth(shifts: Shift[], cursor: Date): number {
+  const monthShifts = shiftsInMonth(shifts, cursor);
+  return findStreakPairs(monthShifts).length;
+}
+
+/* Group consecutive sorted shifts that form streak chains (length >= 2). */
+export type DisplayGroup<T extends Shift = Shift> =
+  | { type: 'single'; shift: T }
+  | { type: 'streak'; shifts: T[] };
+
+export function groupShiftsByStreak<T extends Shift>(shifts: T[]): DisplayGroup<T>[] {
+  const sorted = [...shifts].sort(
+    (a, b) => shiftAbsoluteStartMinutes(a) - shiftAbsoluteStartMinutes(b),
+  );
+  const groups: DisplayGroup<T>[] = [];
+  let i = 0;
+  while (i < sorted.length) {
+    let j = i;
+    while (j + 1 < sorted.length && isStreakPair(sorted[j], sorted[j + 1])) {
+      j++;
+    }
+    if (j > i) {
+      groups.push({ type: 'streak', shifts: sorted.slice(i, j + 1) });
+      i = j + 1;
+    } else {
+      groups.push({ type: 'single', shift: sorted[i] });
+      i++;
+    }
+  }
+  return groups;
 }

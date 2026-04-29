@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { Shift, Template } from '../types';
+import type { AnnotatedShift, Shift, Template } from '../types';
 import {
   HEBREW_WEEKDAYS,
   addMonths,
@@ -12,7 +12,7 @@ import {
 import { DayCell } from './DayCell';
 
 type Props = {
-  shifts: Shift[];
+  shifts: AnnotatedShift[];
   templates: Template[];
   cursor: Date;
   onCursorChange: (cursor: Date) => void;
@@ -35,7 +35,7 @@ export function Calendar({
   const cells = useMemo(() => buildMonthGrid(cursor), [cursor]);
 
   const shiftsByDate = useMemo(() => {
-    const map = new Map<string, Shift[]>();
+    const map = new Map<string, AnnotatedShift[]>();
     for (const s of shifts) {
       const arr = map.get(s.date) ?? [];
       arr.push(s);
