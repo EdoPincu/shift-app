@@ -32,6 +32,16 @@ export function App() {
 
   const annotatedShifts = useMemo(() => annotateShiftsWithStreak(shifts), [shifts]);
 
+  const sortedTemplates = useMemo(
+    () =>
+      [...templates].sort((a, b) => {
+        const aMulti = a.slots.length > 1 ? 0 : 1;
+        const bMulti = b.slots.length > 1 ? 0 : 1;
+        return aMulti - bMulti;
+      }),
+    [templates],
+  );
+
   const openNew = (date?: Date) => {
     setEditing(null);
     setInitialDate(date ?? new Date());
@@ -110,7 +120,7 @@ export function App() {
       <div className="app__main">
         <Calendar
           shifts={annotatedShifts}
-          templates={templates}
+          templates={sortedTemplates}
           cursor={cursor}
           onCursorChange={setCursor}
           onNewShift={() => openNew()}
@@ -120,7 +130,7 @@ export function App() {
         />
         <Dashboard
           shifts={annotatedShifts}
-          templates={templates}
+          templates={sortedTemplates}
           cursor={cursor}
           hourlyRate={hourlyRate}
           onHourlyRateChange={setHourlyRate}
@@ -131,7 +141,7 @@ export function App() {
         open={shiftModalOpen}
         initialDate={initialDate}
         editing={editing}
-        templates={templates}
+        templates={sortedTemplates}
         onClose={closeShiftModal}
         onSave={handleSave}
         onDelete={handleDelete}
@@ -139,7 +149,7 @@ export function App() {
       />
       <TemplateManagerModal
         open={templateModalOpen}
-        templates={templates}
+        templates={sortedTemplates}
         shiftsCountByTemplate={shiftsCountByTemplate}
         onClose={() => setTemplateModalOpen(false)}
         onAdd={addTemplate}

@@ -182,7 +182,7 @@ export function TemplateManagerModal({
         multipliers: slot.wholeBlocks.length > 0 ? flattenBlocks(slot.wholeBlocks) : undefined,
         partialMultiplier: partialMin > 0 ? slot.partialPct : undefined,
         name: slot.name.trim() || undefined,
-        color: slot.color || undefined,
+        color: i > 0 ? (slot.color || undefined) : undefined,
         sameDay: i > 0 && slot.sameDay ? true : undefined,
       });
     }
@@ -403,17 +403,15 @@ export function TemplateManagerModal({
                     </label>
                   </div>
 
-                  {i > 0 && (
-                    <label className="field">
-                      <span className="field__label">שם (ריק = שם התבנית)</span>
-                      <input
-                        type="text"
-                        value={slot.name}
-                        onChange={(e) => updateSlot(i, { name: e.target.value })}
-                        placeholder={edit.name || 'שם התבנית'}
-                      />
-                    </label>
-                  )}
+                  <label className="field">
+                    <span className="field__label">שם משמרת (ריק = שם התבנית)</span>
+                    <input
+                      type="text"
+                      value={slot.name}
+                      onChange={(e) => updateSlot(i, { name: e.target.value })}
+                      placeholder={edit.name || 'שם התבנית'}
+                    />
+                  </label>
 
                   {i > 0 && (
                     <label className="field">
