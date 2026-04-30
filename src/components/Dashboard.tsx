@@ -5,6 +5,7 @@ import {
   formatILS,
   formatShiftDate,
   groupShiftsByStreak,
+  monthEarnedSalary,
   monthLabel,
   monthTotalMinutes,
   monthTotalSalary,
@@ -35,6 +36,11 @@ export function Dashboard({
     () => monthTotalSalary(shifts, cursor, hourlyRate),
     [shifts, cursor, hourlyRate],
   );
+  const earnedSalary = useMemo(
+    () => monthEarnedSalary(shifts, cursor, hourlyRate),
+    [shifts, cursor, hourlyRate],
+  );
+  const earnedPct = totalSalary > 0 ? Math.min(100, (earnedSalary / totalSalary) * 100) : 0;
   const streakCount = useMemo(
     () => streakCountInMonth(shifts, cursor),
     [shifts, cursor],
@@ -104,6 +110,24 @@ export function Dashboard({
             <span className="dashboard__rate-unit">₪/שעה</span>
           </div>
         </label>
+        {totalSalary > 0 && (
+          <div className="earned-progress">
+            <div className="earned-progress__bar-track">
+              <div
+                className="earned-progress__bar-fill"
+                style={{ width: `${earnedPct}%` }}
+                aria-valuenow={earnedPct}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                role="progressbar"
+              />
+            </div>
+            <div className="earned-progress__label">
+              <span>הרווחת {formatILS(earnedSalary)} החודש</span>
+              <span className="earned-progress__pct">{Math.round(earnedPct)}%</span>
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="dashboard__card dashboard__card--streak">

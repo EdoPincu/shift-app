@@ -183,6 +183,22 @@ export function monthTotalSalary(shifts: Shift[], cursor: Date, rate: number): n
   );
 }
 
+export function monthEarnedSalary(
+  shifts: Shift[],
+  cursor: Date,
+  rate: number,
+  now: Date = new Date(),
+): number {
+  const today = toISODate(now);
+  return shiftsInMonth(shifts, cursor)
+    .filter((s) => s.date <= today)
+    .reduce(
+      (acc, s) =>
+        acc + shiftSalary(s.startTime, s.endTime, rate, s.multipliers, s.partialMultiplier),
+      0,
+    );
+}
+
 export function upcomingShifts<T extends Shift>(
   shifts: T[],
   n: number,
