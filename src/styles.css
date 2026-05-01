@@ -293,6 +293,31 @@ button {
   color: #fbbf24;
 }
 
+.dashboard__card--over-limit {
+  border-color: rgba(239, 68, 68, 0.55);
+  background: linear-gradient(
+      180deg,
+      rgba(239, 68, 68, 0.12),
+      rgba(239, 68, 68, 0.03)
+    ),
+    var(--bg-elevated);
+}
+
+.dashboard__total--over-limit {
+  color: #f87171;
+}
+
+.dashboard__over-limit {
+  font-size: 12px;
+  font-weight: 600;
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 8px;
+  padding: 6px 10px;
+  margin-top: 2px;
+}
+
 /* Streak chip outline on calendar */
 .shift-chip--streak {
   box-shadow:

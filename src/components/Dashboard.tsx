@@ -1,13 +1,14 @@
 import { useMemo } from 'react';
 import type { AnnotatedShift, Template } from '../types';
 import {
+  HOURS_LIMIT,
   formatHoursDecimal,
   formatILS,
   formatShiftDate,
   groupShiftsByStreak,
   monthEarnedSalary,
   monthLabel,
-  monthTotalMinutes,
+  monthTotalWeightedMinutes,
   monthTotalSalary,
   shiftsInMonth,
   streakCountInMonth,
@@ -30,7 +31,8 @@ export function Dashboard({
   hourlyRate,
   onHourlyRateChange,
 }: Props) {
-  const totalMin = useMemo(() => monthTotalMinutes(shifts, cursor), [shifts, cursor]);
+  const totalMin = useMemo(() => monthTotalWeightedMinutes(shifts, cursor), [shifts, cursor]);
+  const hoursOverLimit = totalMin / 60 > HOURS_LIMIT;
   const count = useMemo(() => shiftsInMonth(shifts, cursor).length, [shifts, cursor]);
   const totalSalary = useMemo(
     () => monthTotalSalary(shifts, cursor, hourlyRate),
@@ -82,12 +84,17 @@ export function Dashboard({
 
   return (
     <aside className="dashboard">
-      <section className="dashboard__card">
+      <section className={`dashboard__card${hoursOverLimit ? ' dashboard__card--over-limit' : ''}`}>
         <h2 className="dashboard__title">שעות עבודה החודש</h2>
-        <div className="dashboard__total">{formatHoursDecimal(totalMin)}</div>
+        <div className={`dashboard__total${hoursOverLimit ? ' dashboard__total--over-limit' : ''}`}>
+          {formatHoursDecimal(totalMin)}
+        </div>
         <div className="dashboard__sub">
           {count} {count === 1 ? 'משמרת' : 'משמרות'} ב{monthLabel(cursor)}
         </div>
+        {hoursOverLimit && (
+          <div className="dashboard__over-limit">⚠ חריגה מכמות השעות המותרת</div>
+        )}
       </section>
 
       <section className="dashboard__card">
