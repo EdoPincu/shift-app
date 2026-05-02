@@ -27,6 +27,9 @@ type SlotEditState = {
   end: string;
   wholeBlocks: SalaryBlock[];
   partialPct: number;
+  name: string;
+  color: string;
+  sameDay: boolean;
 };
 
 type EditState =
@@ -65,6 +68,9 @@ function slotToEditState(slot: TemplateSlot): SlotEditState {
         ? groupIntoBlocks(slot.multipliers)
         : defaultWholeBlocksFor(slot.start, slot.end),
     partialPct: slot.partialMultiplier ?? 100,
+    name: slot.name ?? '',
+    color: slot.color ?? '',
+    sameDay: slot.sameDay ?? false,
   };
 }
 
@@ -74,6 +80,9 @@ function newEmptySlot(): SlotEditState {
     end: '15:00',
     wholeBlocks: defaultWholeBlocksFor('07:00', '15:00'),
     partialPct: 100,
+    name: '',
+    color: '',
+    sameDay: false,
   };
 }
 
@@ -172,6 +181,9 @@ export function TemplateManagerModal({
         end: slot.end,
         multipliers: slot.wholeBlocks.length > 0 ? flattenBlocks(slot.wholeBlocks) : undefined,
         partialMultiplier: partialMin > 0 ? slot.partialPct : undefined,
+        name: slot.name.trim() || undefined,
+        color: i > 0 ? (slot.color || undefined) : undefined,
+        sameDay: i > 0 && slot.sameDay ? true : undefined,
       });
     }
     setError(null);
@@ -349,6 +361,29 @@ export function TemplateManagerModal({
                       </button>
                     )}
                   </div>
+
+                  {i > 0 && (
+                    <div className="template-slot__day-toggle">
+                      <span className="field__label">יום</span>
+                      <div className="segmented-control">
+                        <button
+                          type="button"
+                          className={`segmented-control__btn${slot.sameDay ? ' segmented-control__btn--active' : ''}`}
+                          onClick={() => updateSlot(i, { sameDay: true })}
+                        >
+                          באותו יום
+                        </button>
+                        <button
+                          type="button"
+                          className={`segmented-control__btn${!slot.sameDay ? ' segmented-control__btn--active' : ''}`}
+                          onClick={() => updateSlot(i, { sameDay: false })}
+                        >
+                          יום למחרת
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="field-row">
                     <label className="field">
                       <span className="field__label">שעת התחלה</span>
@@ -367,6 +402,40 @@ export function TemplateManagerModal({
                       />
                     </label>
                   </div>
+
+                  <label className="field">
+                    <span className="field__label">שם משמרת (ריק = שם התבנית)</span>
+                    <input
+                      type="text"
+                      value={slot.name}
+                      onChange={(e) => updateSlot(i, { name: e.target.value })}
+                      placeholder={edit.name || 'שם התבנית'}
+                    />
+                  </label>
+
+                  {i > 0 && (
+                    <label className="field">
+                      <span className="field__label">צבע (ריק = צבע התבנית)</span>
+                      <div className="template-slot__color-row">
+                        <ColorPicker
+                          value={slot.color || edit.color}
+                          onChange={(color) =>
+                            updateSlot(i, { color: color === edit.color ? '' : color })
+                          }
+                        />
+                        {slot.color && (
+                          <button
+                            type="button"
+                            className="ghost-btn ghost-btn--small"
+                            onClick={() => updateSlot(i, { color: '' })}
+                          >
+                            איפוס
+                          </button>
+                        )}
+                      </div>
+                    </label>
+                  )}
+
                   <HourlyMultipliers
                     durationMinutes={shiftDurationMinutes(slot.start, slot.end)}
                     wholeBlocks={slot.wholeBlocks}

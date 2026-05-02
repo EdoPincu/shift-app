@@ -1,12 +1,14 @@
 import { useMemo } from 'react';
 import type { AnnotatedShift, Template } from '../types';
 import {
+  HOURS_LIMIT,
   formatHoursDecimal,
   formatILS,
   formatShiftDate,
   groupShiftsByStreak,
+  monthEarnedSalary,
   monthLabel,
-  monthTotalMinutes,
+  monthTotalWeightedMinutes,
   monthTotalSalary,
   shiftsInMonth,
   streakCountInMonth,
@@ -29,12 +31,18 @@ export function Dashboard({
   hourlyRate,
   onHourlyRateChange,
 }: Props) {
-  const totalMin = useMemo(() => monthTotalMinutes(shifts, cursor), [shifts, cursor]);
+  const totalMin = useMemo(() => monthTotalWeightedMinutes(shifts, cursor), [shifts, cursor]);
+  const hoursOverLimit = totalMin / 60 > HOURS_LIMIT;
   const count = useMemo(() => shiftsInMonth(shifts, cursor).length, [shifts, cursor]);
   const totalSalary = useMemo(
     () => monthTotalSalary(shifts, cursor, hourlyRate),
     [shifts, cursor, hourlyRate],
   );
+  const earnedSalary = useMemo(
+    () => monthEarnedSalary(shifts, cursor, hourlyRate),
+    [shifts, cursor, hourlyRate],
+  );
+  const earnedPct = totalSalary > 0 ? Math.min(100, (earnedSalary / totalSalary) * 100) : 0;
   const streakCount = useMemo(
     () => streakCountInMonth(shifts, cursor),
     [shifts, cursor],
@@ -76,12 +84,17 @@ export function Dashboard({
 
   return (
     <aside className="dashboard">
-      <section className="dashboard__card">
+      <section className={`dashboard__card${hoursOverLimit ? ' dashboard__card--over-limit' : ''}`}>
         <h2 className="dashboard__title">שעות עבודה החודש</h2>
-        <div className="dashboard__total">{formatHoursDecimal(totalMin)}</div>
+        <div className={`dashboard__total${hoursOverLimit ? ' dashboard__total--over-limit' : ''}`}>
+          {formatHoursDecimal(totalMin)}
+        </div>
         <div className="dashboard__sub">
           {count} {count === 1 ? 'משמרת' : 'משמרות'} ב{monthLabel(cursor)}
         </div>
+        {hoursOverLimit && (
+          <div className="dashboard__over-limit">⚠ חריגה מכמות השעות המותרת</div>
+        )}
       </section>
 
       <section className="dashboard__card">
@@ -104,6 +117,24 @@ export function Dashboard({
             <span className="dashboard__rate-unit">₪/שעה</span>
           </div>
         </label>
+        {totalSalary > 0 && (
+          <div className="earned-progress">
+            <div className="earned-progress__bar-track">
+              <div
+                className="earned-progress__bar-fill"
+                style={{ width: `${earnedPct}%` }}
+                aria-valuenow={earnedPct}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                role="progressbar"
+              />
+            </div>
+            <div className="earned-progress__label">
+              <span>הרווחת {formatILS(earnedSalary)} החודש</span>
+              <span className="earned-progress__pct">{Math.round(earnedPct)}%</span>
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="dashboard__card dashboard__card--streak">

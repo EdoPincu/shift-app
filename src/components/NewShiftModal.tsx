@@ -99,7 +99,7 @@ export function NewShiftModal({
     if (!slot) return;
     setStartTime(slot.start);
     setEndTime(slot.end);
-    setName(t.name);
+    setName(slot.name || t.name);
     setWholeBlocks(wholeBlocksFromMultipliers(slot.multipliers, slot.start, slot.end));
     setPartialPct(slot.partialMultiplier ?? 100);
     setTemplateId(t.id);

@@ -32,6 +32,16 @@ export function App() {
 
   const annotatedShifts = useMemo(() => annotateShiftsWithStreak(shifts), [shifts]);
 
+  const sortedTemplates = useMemo(
+    () =>
+      [...templates].sort((a, b) => {
+        const aMulti = a.slots.length > 1 ? 0 : 1;
+        const bMulti = b.slots.length > 1 ? 0 : 1;
+        return aMulti - bMulti;
+      }),
+    [templates],
+  );
+
   const openNew = (date?: Date) => {
     setEditing(null);
     setInitialDate(date ?? new Date());
@@ -60,21 +70,19 @@ export function App() {
   };
 
   const handleApplyMultiSlotTemplate = (template: Template, date: string) => {
-    let currentDate = date;
+    const [y, m, d] = date.split('-').map(Number);
+    const baseDate = new Date(y, m - 1, d);
+    let dayOffset = 0;
     const drafts: ShiftDraft[] = template.slots.map((slot, idx) => {
-      if (idx > 0) {
-        const prevSlot = template.slots[idx - 1];
-        // If this slot starts at or before the previous slot ends, it crosses midnight → next day
-        if (slot.start <= prevSlot.end) {
-          const [y, m, d] = currentDate.split('-').map(Number);
-          currentDate = toISODate(new Date(y, m - 1, d + 1));
-        }
-      }
+      if (idx > 0 && !slot.sameDay) dayOffset++;
+      const slotDate = new Date(baseDate);
+      slotDate.setDate(baseDate.getDate() + dayOffset);
       return {
-        date: currentDate,
+        date: toISODate(slotDate),
         startTime: slot.start,
         endTime: slot.end,
-        name: template.name,
+        name: slot.name || template.name,
+        color: slot.color || undefined,
         multipliers: slot.multipliers,
         partialMultiplier: slot.partialMultiplier,
         templateId: template.id,
@@ -112,7 +120,7 @@ export function App() {
       <div className="app__main">
         <Calendar
           shifts={annotatedShifts}
-          templates={templates}
+          templates={sortedTemplates}
           cursor={cursor}
           onCursorChange={setCursor}
           onNewShift={() => openNew()}
@@ -122,7 +130,7 @@ export function App() {
         />
         <Dashboard
           shifts={annotatedShifts}
-          templates={templates}
+          templates={sortedTemplates}
           cursor={cursor}
           hourlyRate={hourlyRate}
           onHourlyRateChange={setHourlyRate}
@@ -133,7 +141,7 @@ export function App() {
         open={shiftModalOpen}
         initialDate={initialDate}
         editing={editing}
-        templates={templates}
+        templates={sortedTemplates}
         onClose={closeShiftModal}
         onSave={handleSave}
         onDelete={handleDelete}
@@ -141,7 +149,7 @@ export function App() {
       />
       <TemplateManagerModal
         open={templateModalOpen}
-        templates={templates}
+        templates={sortedTemplates}
         shiftsCountByTemplate={shiftsCountByTemplate}
         onClose={() => setTemplateModalOpen(false)}
         onAdd={addTemplate}

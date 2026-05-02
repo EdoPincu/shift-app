@@ -88,6 +88,15 @@ export function endsNextDay(startTime: string, endTime: string): boolean {
   return endTime <= startTime;
 }
 
+export function isOvernight(shift: { startTime: string; endTime: string }): boolean {
+  return endsNextDay(shift.startTime, shift.endTime);
+}
+
+export function nextISODate(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  return toISODate(new Date(y, m - 1, d + 1));
+}
+
 export function shiftDurationMinutes(startTime: string, endTime: string): number {
   const [sh, sm] = startTime.split(':').map(Number);
   const [eh, em] = endTime.split(':').map(Number);
@@ -126,6 +135,60 @@ export function monthTotalMinutes(shifts: Shift[], cursor: Date): number {
     0,
   );
 }
+
+/**
+ * Minutes of the shift that fall inside the Shabbat window
+ * (Friday 18:00 → Saturday 23:00).
+ * Works in "minutes-from-midnight-of-shiftDate" space to avoid timezone issues.
+ * Checks both the current week's window and the next week's window
+ * so multi-day shifts are handled correctly.
+ */
+export function shabbatOverlapMinutes(
+  shiftDate: string,
+  startTime: string,
+  endTime: string,
+): number {
+  const [y, m, d] = shiftDate.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  const dayOfWeek = date.getDay(); // 0=Sun … 5=Fri, 6=Sat
+
+  const [sh, sm] = startTime.split(':').map(Number);
+  const startMin = sh * 60 + sm;
+  const duration = shiftDurationMinutes(startTime, endTime);
+  const endMin = startMin + duration;
+
+  // daysSinceFriday: 0 on Fri, 1 on Sat, 2 on Sun, …, 6 on Thu
+  const daysSinceFriday = (dayOfWeek - 5 + 7) % 7;
+
+  // Shabbat window expressed in minutes from midnight of shiftDate
+  // Fri 18:00 → Sat 23:00 = 29 hours
+  const winStart = -daysSinceFriday * 24 * 60 + 18 * 60;
+  const winEnd = winStart + 29 * 60;
+
+  const overlap = (s: number, e: number, ws: number, we: number) =>
+    Math.max(0, Math.min(e, we) - Math.max(s, ws));
+
+  // Current week's Shabbat + next week's (for shifts > ~7h on Thu/other edge days)
+  return (
+    overlap(startMin, endMin, winStart, winEnd) +
+    overlap(startMin, endMin, winStart + 7 * 24 * 60, winEnd + 7 * 24 * 60)
+  );
+}
+
+/**
+ * Total "display minutes" for the month's hours counter:
+ * Shabbat minutes (Fri 18:00–Sat 23:00) are doubled; all other minutes are 1×.
+ * Salary calculations are unaffected by this weighting.
+ */
+export function monthTotalWeightedMinutes(shifts: Shift[], cursor: Date): number {
+  return shiftsInMonth(shifts, cursor).reduce((acc, s) => {
+    const dur = shiftDurationMinutes(s.startTime, s.endTime);
+    const shabbat = shabbatOverlapMinutes(s.date, s.startTime, s.endTime);
+    return acc + dur + shabbat; // shabbat minutes counted once extra = doubled
+  }, 0);
+}
+
+export const HOURS_LIMIT = 254;
 
 export function wholeHoursOfShift(durationMinutes: number): number {
   if (durationMinutes <= 0) return 0;
@@ -172,6 +235,22 @@ export function monthTotalSalary(shifts: Shift[], cursor: Date, rate: number): n
       acc + shiftSalary(s.startTime, s.endTime, rate, s.multipliers, s.partialMultiplier),
     0,
   );
+}
+
+export function monthEarnedSalary(
+  shifts: Shift[],
+  cursor: Date,
+  rate: number,
+  now: Date = new Date(),
+): number {
+  const today = toISODate(now);
+  return shiftsInMonth(shifts, cursor)
+    .filter((s) => s.date <= today)
+    .reduce(
+      (acc, s) =>
+        acc + shiftSalary(s.startTime, s.endTime, rate, s.multipliers, s.partialMultiplier),
+      0,
+    );
 }
 
 export function upcomingShifts<T extends Shift>(

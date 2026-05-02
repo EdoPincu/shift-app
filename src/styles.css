@@ -151,6 +151,43 @@ button {
   white-space: nowrap;
 }
 
+.earned-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.earned-progress__bar-track {
+  height: 8px;
+  background: var(--bg);
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.earned-progress__bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #34d399, #10b981);
+  border-radius: 999px;
+  transition: width 0.4s ease;
+  min-width: 4px;
+}
+
+.earned-progress__label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.earned-progress__pct {
+  font-weight: 700;
+  color: #34d399;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Upcoming shifts list */
 .upcoming-list {
   list-style: none;
@@ -254,6 +291,31 @@ button {
 
 .dashboard__total--streak {
   color: #fbbf24;
+}
+
+.dashboard__card--over-limit {
+  border-color: rgba(239, 68, 68, 0.55);
+  background: linear-gradient(
+      180deg,
+      rgba(239, 68, 68, 0.12),
+      rgba(239, 68, 68, 0.03)
+    ),
+    var(--bg-elevated);
+}
+
+.dashboard__total--over-limit {
+  color: #f87171;
+}
+
+.dashboard__over-limit {
+  font-size: 12px;
+  font-weight: 600;
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 8px;
+  padding: 6px 10px;
+  margin-top: 2px;
 }
 
 /* Streak chip outline on calendar */
@@ -636,6 +698,7 @@ button {
 }
 
 .day-cell {
+  position: relative;
   background: var(--bg-cell);
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -674,6 +737,52 @@ button {
 .day-cell--today.day-cell--weekend {
   background: linear-gradient(180deg, rgba(56, 189, 248, 0.3), rgba(168, 85, 247, 0.12)),
     var(--today);
+}
+
+.day-cell--streak {
+  background: linear-gradient(
+      180deg,
+      rgba(245, 158, 11, 0.15),
+      rgba(245, 158, 11, 0.06)
+    ),
+    var(--bg-cell);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+.day-cell--streak.day-cell--weekend {
+  background: linear-gradient(
+      180deg,
+      rgba(245, 158, 11, 0.18),
+      rgba(245, 158, 11, 0.04)
+    ),
+    linear-gradient(180deg, rgba(56, 189, 248, 0.06), rgba(168, 85, 247, 0.04)),
+    var(--bg-cell);
+}
+
+.day-cell--streak.day-cell--today {
+  background: linear-gradient(
+      180deg,
+      rgba(245, 158, 11, 0.18),
+      rgba(245, 158, 11, 0.04)
+    ),
+    linear-gradient(180deg, rgba(56, 189, 248, 0.22), rgba(56, 189, 248, 0.06)),
+    var(--today);
+}
+
+.day-cell__streak-badge {
+  position: absolute;
+  top: 4px;
+  inset-inline-end: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.14);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  padding: 1px 6px;
+  border-radius: 999px;
+  pointer-events: none;
+  line-height: 1.2;
 }
 
 .calendar__weekday--weekend {
@@ -716,6 +825,29 @@ button {
 .shift-chip__next {
   margin-inline-start: 4px;
   opacity: 0.85;
+}
+
+.shift-chip__prev {
+  margin-inline-end: 4px;
+  opacity: 0.85;
+}
+
+.shift-chip__arrow {
+  opacity: 0.9;
+  font-weight: 700;
+}
+
+.shift-chip--seg-start {
+  border-start-end-radius: 2px;
+  border-end-end-radius: 2px;
+  border-inline-end: 2px dashed rgba(255, 255, 255, 0.45);
+}
+
+.shift-chip--seg-end {
+  border-start-start-radius: 2px;
+  border-end-start-radius: 2px;
+  border-inline-start: 2px dashed rgba(255, 255, 255, 0.45);
+  opacity: 0.93;
 }
 
 /* Modal */
@@ -830,6 +962,54 @@ button {
   display: flex;
   gap: 8px;
   margin-inline-start: auto;
+}
+
+/* Segmented control (e.g. day toggle) */
+.template-slot__day-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.segmented-control {
+  display: flex;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 3px;
+}
+
+.segmented-control__btn {
+  flex: 1;
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+
+.segmented-control__btn:hover:not(.segmented-control__btn--active) {
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+
+.segmented-control__btn--active {
+  background: var(--accent);
+  color: #0b1220;
+  font-weight: 700;
+}
+
+.template-slot__color-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 /* Template manager */
