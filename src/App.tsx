@@ -122,6 +122,7 @@ export function App() {
           shifts={annotatedShifts}
           templates={sortedTemplates}
           cursor={cursor}
+          hourlyRate={hourlyRate}
           onCursorChange={setCursor}
           onNewShift={() => openNew()}
           onAddShiftForDate={(date) => openNew(date)}

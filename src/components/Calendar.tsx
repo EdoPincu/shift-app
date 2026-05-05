@@ -17,6 +17,7 @@ type Props = {
   shifts: AnnotatedShift[];
   templates: Template[];
   cursor: Date;
+  hourlyRate: number;
   onCursorChange: (cursor: Date) => void;
   onNewShift: () => void;
   onAddShiftForDate: (date: Date) => void;
@@ -28,6 +29,7 @@ export function Calendar({
   shifts,
   templates,
   cursor,
+  hourlyRate,
   onCursorChange,
   onNewShift,
   onAddShiftForDate,
@@ -125,6 +127,7 @@ export function Calendar({
             isWeekend={isWeekend(date)}
             chips={chipsByDate.get(toISODate(date)) ?? []}
             colorByTemplateId={colorByTemplateId}
+            hourlyRate={hourlyRate}
             onAddShift={onAddShiftForDate}
             onEditShift={onEditShift}
           />
